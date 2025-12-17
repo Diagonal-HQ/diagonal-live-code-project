@@ -1,0 +1,71 @@
+networks:
+  diagonal-take-home:
+
+volumes:
+  pgsqldata:
+  redis:
+
+services:
+  php-cli:
+    profiles:
+      - donotstart
+    build:
+      context: ./dockerfiles
+      dockerfile: php.dockerfile
+      args:
+        BASE_IMAGE: php:8.4-cli-alpine
+    environment:
+      XDEBUG_MODE: '${XDEBUG_MODE:-off}'
+      XDEBUG_CLIENT_HOST: '${XDEBUG_CLIENT_HOST:-host.docker.internal}'
+      XDEBUG_CLIENT_PORT: '${XDEBUG_CLIENT_PORT:-9003}'
+    volumes:
+      - ./:/var/www/html
+      - ./dockerfiles/php.ini:/usr/local/etc/php/conf.d/99-custom.ini
+    networks:
+      - diagonal-take-home
+
+  php-octane:
+    depends_on:
+      - redis
+      - postgres
+    build:
+      context: ./dockerfiles
+      dockerfile: php.dockerfile
+      args:
+        BASE_IMAGE: php:8.4-fpm-alpine
+    restart: unless-stopped
+    entrypoint: php artisan octane:start --workers=${OCTANE_WORKERS:-5} --task-workers=${OCTANE_TASK_WORKERS:-1} --max-requests=${OCTANE_MAX_REQUESTS:-1} --host=0.0.0.0 --port=8000
+    environment:
+      XDEBUG_MODE: '${XDEBUG_MODE:-off}'
+      XDEBUG_CLIENT_HOST: '${XDEBUG_CLIENT_HOST:-host.docker.internal}'
+      XDEBUG_CLIENT_PORT: '${XDEBUG_CLIENT_PORT:-9003}'
+    ports:
+      - '${APP_PORT:-9002}:8000'
+    volumes:
+      - ./:/var/www/html
+      - ./dockerfiles/php.ini:/usr/local/etc/php/conf.d/99-custom.ini
+    networks:
+      - diagonal-take-home
+
+  postgres:
+    image: postgres:17.4
+    ports:
+      - '${FORWARD_DB_PORT:-5432}:5432'
+    environment:
+      POSTGRES_USER: '${DB_USERNAME:-postgres}'
+      POSTGRES_PASSWORD: '${DB_PASSWORD:-postgres}'
+      POSTGRES_DB: '${DB_DATABASE:-laravel}'
+    volumes:
+      - pgsqldata:/var/lib/postgresql/data
+    networks:
+      - diagonal-take-home
+
+  redis:
+    image: redis:6
+    restart: always
+    volumes:
+      - redis:/var/lib/redis/data
+    ports:
+      - '${FORWARD_REDIS_PORT:-6379}:6379'
+    networks:
+      - diagonal-take-home

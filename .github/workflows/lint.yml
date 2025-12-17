@@ -1,0 +1,116 @@
+name: Lint
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '**.php'
+      - 'resources/js/**/*.ts'
+      - 'resources/js/**/*.tsx'
+      - .github/workflows/lint.yml
+      - pint.json
+      - .eslintrc.json
+      - package-lock.json
+      - composer.lock
+      - .env.ci
+
+jobs:
+  code-styling:
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}
+      cancel-in-progress: true
+
+    runs-on: ubuntu-latest
+
+    env:
+      NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    permissions: write-all
+
+    timeout-minutes: 5
+
+    services:
+      postgres:
+        image: postgres:17.4
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: diagonal
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: '22'
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: 8.4
+          extensions: dom, curl, libxml, mbstring, zip, pcntl, pdo, sqlite, pdo_sqlite, mysql, mysqli, pdo_mysql, bcmath, soap, intl, gd, exif, iconv, imagick
+          coverage: none
+
+      - name: Cache npm packages
+        id: npm-cache
+        uses: actions/cache@v3
+        with:
+          path: node_modules
+          key: ${{ runner.os }}-npm-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: ${{ runner.os }}-npm-
+
+      - name: Create .npmrc file
+        run: |
+          echo "//npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}
+            @diagonal-hq:registry=https://npm.pkg.github.com
+            always-auth=true" > .npmrc
+
+      - name: Install npm dependencies
+        run: npm install
+
+      - name: Cache Composer packages
+        id: composer-cache
+        uses: actions/cache@v3
+        with:
+          path: vendor
+          key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
+          restore-keys: ${{ runner.os }}-composer-
+
+      - name: Install Composer Dependencies
+        run: composer install
+
+      - name: Configure application
+        run: |
+          cp .env.ci .env
+          php artisan key:generate
+
+      - name: Run migrations
+        run: php artisan migrate
+
+      - name: Generate ide-helper
+        run: composer autocomplete
+
+      - name: Run static analysis (Larastan)
+        run: composer lint
+
+      - name: Fix backend (Pint)
+        run: composer fix
+
+      - name: Fix frontend (ESLint)
+        run: npm run lint-fix
+
+      - name: Commit changes
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "Fix styling"

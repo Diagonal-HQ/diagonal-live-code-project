@@ -1,0 +1,77 @@
+{
+  "env": {
+    "browser": true,
+    "es2021": true
+  },
+  "extends": [
+    "standard",
+    "prettier",
+    "plugin:@typescript-eslint/eslint-recommended",
+    "plugin:@typescript-eslint/recommended"
+  ],
+  "ignorePatterns": ["resources/js/types/generated.d.ts", "resources/js/types/backend.ts"],
+  "plugins": [
+    "react",
+    "react-hooks",
+    "prettier",
+    "@typescript-eslint",
+    "unused-imports",
+    "@tanstack/query"
+  ],
+  "parserOptions": {
+    "parser": "@typescript-eslint/parser",
+    "ecmaFeatures": {
+      "jsx": true
+    },
+    "ecmaVersion": 12,
+    "sourceType": "module"
+  },
+  "rules": {
+    "@tanstack/query/exhaustive-deps": "error",
+    "@typescript-eslint/no-explicit-any": "off",
+    "prettier/prettier": "error",
+    "semi": ["error", "always"],
+    "comma-dangle": ["error", "never"],
+    "camelcase": "off",
+    "react/jsx-uses-vars": "error",
+    "react/jsx-uses-react": "error",
+    "react/react-in-jsx-scope": "off",
+    "react/display-name": "off",
+    "react/jsx-curly-brace-presence": ["error", "never"],
+    "react-hooks/rules-of-hooks": "error",
+    "react-hooks/exhaustive-deps": "warn",
+    "no-use-before-define": "off",
+    "no-unused-vars": "off",
+    "@typescript-eslint/no-unused-vars": "error",
+    "unused-imports/no-unused-imports": "error",
+    "unused-imports/no-unused-vars": [
+      "warn",
+      {
+        "vars": "all",
+        "varsIgnorePattern": "^_",
+        "args": "after-used",
+        "argsIgnorePattern": "^_"
+      }
+    ]
+  },
+  "settings": {
+    "react": {
+      "version": "detect"
+    },
+    "import/resolver": {
+      "alias": {
+        "map": [
+          ["@", "./resources/js"],
+          ["ziggy", "./vendor/tightenco/ziggy/dist/js/route.js"]
+        ],
+        "extensions": [".tsx", ".ts"]
+      }
+    }
+  },
+  "globals": {
+    "document": true,
+    "window": true,
+    "route": true,
+    "axios": true
+  }
+}
