@@ -107,6 +107,12 @@ const availableRules = [
         }
       ]
     }
+  },
+  {
+    name: 'Empty rule... 👀',
+    event: '',
+    action: {},
+    guard: {}
   }
 ];
 
